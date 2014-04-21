@@ -72,7 +72,7 @@ unsigned int usbserial_get_ports_count(
  * It is guaranteed that *out_port is NULL if an error occured
  * (non-zero return value) and that *out_port is not NULL on
  * success (zero return value).
- * Results are undefined, if port_idx >= 0 usbserial_get_ports_count()
+ * Results are undefined, if port_idx >= usbserial_get_ports_count()
  * return value.
  * read_cb must not be NULL, unless no read operations are performed
  * (usbserial_start_reader() is not called afterwards).
