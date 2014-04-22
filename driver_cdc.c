@@ -259,20 +259,62 @@ static int cdc_port_deinit(struct usbserial_port* port)
     return ret;
 }
 
-static int cdc_port_set_baudrate(
+static int cdc_port_set_line_config(
         struct usbserial_port* port,
-        unsigned int baud)
+        const struct usbserial_line_config* line_config)
 {
     assert(port);
+    assert(line_config);
 
     int ctrl_ret;
-    uint32_t baud_le = usbserial_common_convert_to_le((uint32_t) baud);
     unsigned char data[7];
+    unsigned char stop_bits_byte, parity_byte, data_bits_byte;
+    uint32_t baud_le = usbserial_common_convert_to_le((uint32_t) line_config->baud);
+
+    switch (line_config->stop_bits)
+    {
+    case USBSERIAL_STOPBITS_1:
+        stop_bits_byte = 0;
+        break;
+    case USBSERIAL_STOPBITS_1_5:
+        stop_bits_byte = 1;
+        break;
+    case USBSERIAL_STOPBITS_2:
+        stop_bits_byte = 2;
+        break;
+
+    default:
+        return USBSERIAL_ERROR_INVALID_PARAMETER;
+    }
+
+    switch (line_config->parity)
+    {
+    case USBSERIAL_PARITY_NONE:
+        parity_byte = 0;
+        break;
+    case USBSERIAL_PARITY_ODD:
+        parity_byte = 1;
+        break;
+    case USBSERIAL_PARITY_EVEN:
+        parity_byte = 2;
+        break;
+    case USBSERIAL_PARITY_MARK:
+        parity_byte = 3;
+        break;
+    case USBSERIAL_PARITY_SPACE:
+        parity_byte = 4;
+        break;
+
+    default:
+        return USBSERIAL_ERROR_INVALID_PARAMETER;
+    }
+
+    data_bits_byte = (unsigned char) line_config->data_bits;
 
     memcpy(data, &baud_le, sizeof(baud_le));
-    data[4] = 0;
-    data[5] = 0;
-    data[6] = 8;
+    data[4] = stop_bits_byte;
+    data[5] = parity_byte;
+    data[6] = data_bits_byte;
 
     ctrl_ret = libusb_control_transfer(
                 port->usb_device_handle,
@@ -394,7 +436,7 @@ void cdc_driver_init(struct usbserial_driver* driver)
     driver->get_ports_count = cdc_get_ports_count;
     driver->port_init = cdc_port_init;
     driver->port_deinit = cdc_port_deinit;
-    driver->port_set_baud_rate = cdc_port_set_baudrate;
+    driver->port_set_line_config = cdc_port_set_line_config;
     driver->start_reader = cdc_start_reader;
     driver->stop_reader = cdc_stop_reader;
     driver->write = cdc_write;

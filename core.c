@@ -124,7 +124,6 @@ int usbserial_port_init(
         struct usbserial_port** out_port,
         libusb_device_handle* usb_device_handle,
         unsigned int port_idx,
-        unsigned int baud,
         usbserial_read_cb_fn read_cb,
         usbserial_error_cb_fn read_error_cb,
         void* cb_user_data)
@@ -223,9 +222,6 @@ int usbserial_port_init(
 
     *out_port = port;
 
-    ret = driver->port_set_baud_rate(port, baud);
-    if (0 != ret) goto fail;
-
     return 0;
 
 fail:
@@ -265,6 +261,15 @@ int usbserial_port_deinit(struct usbserial_port* port)
     deinit_ret = port->driver->port_deinit(port);
     free(port);
     return deinit_ret;
+}
+
+int usbserial_port_set_line_config(
+        struct usbserial_port* port,
+        const struct usbserial_line_config* line_config)
+{
+    if (!port || !line_config) return USBSERIAL_ERROR_INVALID_PARAMETER;
+
+    return port->driver->port_set_line_config(port, line_config);
 }
 
 int usbserial_start_reader(struct usbserial_port* port)

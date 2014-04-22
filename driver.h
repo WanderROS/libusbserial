@@ -39,9 +39,9 @@ struct usbserial_driver
     int (*port_init)(struct usbserial_port* port);
     int (*port_deinit)(struct usbserial_port* port);
 
-    int (*port_set_baud_rate)(
+    int (*port_set_line_config)(
             struct usbserial_port* port,
-            unsigned int baud);
+            const struct usbserial_line_config* line_config);
 
     int (*start_reader)(struct usbserial_port* port);
     int (*stop_reader)(struct usbserial_port* port);

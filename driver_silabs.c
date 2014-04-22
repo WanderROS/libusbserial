@@ -21,6 +21,7 @@ along with libusbserial. If not, see <http://www.gnu.org/licenses/>.
 
 #include <assert.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define SILABS_VENDOR_ID 0x10c4
 
@@ -216,14 +217,73 @@ static int silabs_port_deinit(struct usbserial_port* port)
                 port->port_idx);
 }
 
-static int silabs_port_set_baudrate(
+static int silabs_port_set_line_config(
         struct usbserial_port* port,
-        unsigned int baud)
+        const struct usbserial_line_config* line_config)
 {
     assert(port);
+    assert(line_config);
 
     int ctrl_ret;
-    uint32_t baud_le = usbserial_common_convert_to_le((uint32_t) baud);
+    unsigned char data[8];
+    unsigned char parity_byte, flow_control_byte, data_bits_byte, stop_bits_byte;
+    uint32_t baud_le = usbserial_common_convert_to_le((uint32_t) line_config->baud);
+
+    switch (line_config->parity)
+    {
+    case USBSERIAL_PARITY_NONE:
+        parity_byte = 0;
+        break;
+    case USBSERIAL_PARITY_ODD:
+        parity_byte = 1;
+        break;
+    case USBSERIAL_PARITY_EVEN:
+        parity_byte = 2;
+        break;
+    case USBSERIAL_PARITY_MARK:
+        parity_byte = 3;
+        break;
+    case USBSERIAL_PARITY_SPACE:
+        parity_byte = 4;
+        break;
+
+    default:
+        return USBSERIAL_ERROR_INVALID_PARAMETER;
+    }
+
+    flow_control_byte = 0; /* Hardware flow control not supported (yet) */
+
+    data_bits_byte = (unsigned char) line_config->data_bits;
+
+    switch (line_config->stop_bits)
+    {
+    case USBSERIAL_STOPBITS_1:
+        stop_bits_byte = 0;
+        break;
+    case USBSERIAL_STOPBITS_1_5:
+        stop_bits_byte = 1;
+        if (USBSERIAL_DATABITS_5 != line_config->data_bits)
+        {
+            return USBSERIAL_ERROR_UNSUPPORTED_OPERATION;
+        }
+        break;
+    case USBSERIAL_STOPBITS_2:
+        stop_bits_byte = 1;
+        if (USBSERIAL_DATABITS_5 == line_config->data_bits)
+        {
+            return USBSERIAL_ERROR_UNSUPPORTED_OPERATION;
+        }
+        break;
+
+    default:
+        return USBSERIAL_ERROR_INVALID_PARAMETER;
+    }
+
+    memcpy(data, &baud_le, sizeof(baud_le));
+    data[4] = parity_byte;
+    data[5] = flow_control_byte;
+    data[6] = data_bits_byte;
+    data[7] = stop_bits_byte;
 
     ctrl_ret = libusb_control_transfer(
                 port->usb_device_handle,
@@ -231,12 +291,12 @@ static int silabs_port_set_baudrate(
                 SILABS_BAUDRATE_REQUEST_CODE,
                 0,
                 (uint16_t) port->port_idx,
-                (unsigned char*) &baud_le,
-                sizeof(baud_le),
+                data,
+                sizeof(data),
                 DEFAULT_CONTROL_TIMEOUT_MILLIS);
     if (ctrl_ret > 0)
     {
-        if (ctrl_ret == sizeof(baud_le)) return 0;
+        if (ctrl_ret == sizeof(data)) return 0;
         else return USBSERIAL_ERROR_CTRL_CMD_FAILED;
     }
     else return ctrl_ret;
@@ -333,7 +393,7 @@ void silabs_driver_init(struct usbserial_driver* driver)
     driver->get_ports_count = silabs_get_ports_count;
     driver->port_init = silabs_port_init;
     driver->port_deinit = silabs_port_deinit;
-    driver->port_set_baud_rate = silabs_port_set_baudrate;
+    driver->port_set_line_config = silabs_port_set_line_config;
     driver->start_reader = silabs_start_reader;
     driver->stop_reader = silabs_stop_reader;
     driver->write = silabs_write;

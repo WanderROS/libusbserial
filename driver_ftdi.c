@@ -31,6 +31,7 @@ along with libusbserial. If not, see <http://www.gnu.org/licenses/>.
 
 #define FTDI_SIO_REQUEST_RESET 0
 #define FTDI_SIO_REQUEST_SET_BAUD_RATE 3
+#define FTDI_SIO_REQUEST_SET_LINE_CONFIG 4
 
 #define FTDI_SIO_RESET 0
 #define FTDI_SIO_RESET_PURGE_RX 1
@@ -40,6 +41,19 @@ along with libusbserial. If not, see <http://www.gnu.org/licenses/>.
 #define FTDI_DEVICE_OUT_REQTYPE LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_RECIPIENT_DEVICE
 
 #define FTDI_MODEM_STATUS_BYTES_COUNT 2
+
+#define FTDI_PARITY_LINE_CONFIG_VALUE_SHIFT 8
+#define FTDI_STOP_BITS_LINE_CONFIG_VALUE_SHIFT 11
+
+#define FTDI_PARITY_NONE_LINE_CONFIG_VALUE (0x00 << FTDI_PARITY_LINE_CONFIG_VALUE_SHIFT)
+#define FTDI_PARITY_ODD_LINE_CONFIG_VALUE (0x01 << FTDI_PARITY_LINE_CONFIG_VALUE_SHIFT)
+#define FTDI_PARITY_EVEN_LINE_CONFIG_VALUE (0x02 << FTDI_PARITY_LINE_CONFIG_VALUE_SHIFT)
+#define FTDI_PARITY_MARK_LINE_CONFIG_VALUE (0x03 << FTDI_PARITY_LINE_CONFIG_VALUE_SHIFT)
+#define FTDI_PARITY_SPACE_LINE_CONFIG_VALUE (0x04 << FTDI_PARITY_LINE_CONFIG_VALUE_SHIFT)
+
+#define FTDI_STOP_BITS_1_LINE_CONFIG_VALUE (0x00 << FTDI_STOP_BITS_LINE_CONFIG_VALUE_SHIFT)
+#define FTDI_STOP_BITS_1_5_LINE_CONFIG_VALUE (0x01 << FTDI_STOP_BITS_LINE_CONFIG_VALUE_SHIFT)
+#define FTDI_STOP_BITS_2_LINE_CONFIG_VALUE (0x02 << FTDI_STOP_BITS_LINE_CONFIG_VALUE_SHIFT)
 
 #define FTDI_READ_ENDPOINT(i) (0x81 + 2 * i)
 #define FTDI_WRITE_ENDPOINT(i) (0x02 + 2 * i)
@@ -322,29 +336,73 @@ static int ftdi_port_deinit(struct usbserial_port* port)
                 port->port_idx);
 }
 
-static int ftdi_port_set_baudrate(
+static int ftdi_port_set_line_config(
         struct usbserial_port* port,
-        unsigned int baud)
+        const struct usbserial_line_config* line_config)
 {
     assert(port);
+    assert(line_config);
 
     struct ftdi_port_data* port_data;
+    uint16_t ftdi_line_config_value;
+    struct ftdi_baud_data converted_baudrate;
+    int ret;
 
     if (!port->driver_specific_data) return USBSERIAL_ERROR_ILLEGAL_STATE;
 
     port_data = (struct ftdi_port_data*) port->driver_specific_data;
 
-    struct ftdi_baud_data converted_baudrate
+    converted_baudrate
             = convert_baudrate(
-                baud,
+                line_config->baud,
                 port_data->device_type,
                 port_data->control_idx);
-    if (baud != converted_baudrate.best_baud)
+    if (line_config->baud != converted_baudrate.best_baud)
     {
         return USBSERIAL_ERROR_UNSUPPORTED_BAUD_RATE;
     }
 
-    return libusb_control_transfer(
+    ftdi_line_config_value = line_config->data_bits;
+
+    switch (line_config->stop_bits)
+    {
+    case USBSERIAL_STOPBITS_1:
+        ftdi_line_config_value |= FTDI_STOP_BITS_1_LINE_CONFIG_VALUE;
+        break;
+    case USBSERIAL_STOPBITS_1_5:
+        ftdi_line_config_value |= FTDI_STOP_BITS_1_5_LINE_CONFIG_VALUE;
+        break;
+    case USBSERIAL_STOPBITS_2:
+        ftdi_line_config_value |= FTDI_STOP_BITS_2_LINE_CONFIG_VALUE;
+        break;
+
+    default:
+        return USBSERIAL_ERROR_INVALID_PARAMETER;
+    }
+
+    switch (line_config->parity)
+    {
+    case USBSERIAL_PARITY_NONE:
+        ftdi_line_config_value |= FTDI_PARITY_NONE_LINE_CONFIG_VALUE;
+        break;
+    case USBSERIAL_PARITY_ODD:
+        ftdi_line_config_value |= FTDI_PARITY_NONE_LINE_CONFIG_VALUE;
+        break;
+    case USBSERIAL_PARITY_EVEN:
+        ftdi_line_config_value |= FTDI_PARITY_NONE_LINE_CONFIG_VALUE;
+        break;
+    case USBSERIAL_PARITY_MARK:
+        ftdi_line_config_value |= FTDI_PARITY_NONE_LINE_CONFIG_VALUE;
+        break;
+    case USBSERIAL_PARITY_SPACE:
+        ftdi_line_config_value |= FTDI_PARITY_NONE_LINE_CONFIG_VALUE;
+        break;
+
+    default:
+        return USBSERIAL_ERROR_INVALID_PARAMETER;
+    }
+
+    ret = libusb_control_transfer(
                 port->usb_device_handle,
                 FTDI_DEVICE_OUT_REQTYPE,
                 FTDI_SIO_REQUEST_SET_BAUD_RATE,
@@ -353,6 +411,18 @@ static int ftdi_port_set_baudrate(
                 NULL,
                 0,
                 DEFAULT_CONTROL_TIMEOUT_MILLIS);
+    if (0 != ret) return ret;
+
+    ret = libusb_control_transfer(
+                port->usb_device_handle,
+                FTDI_DEVICE_OUT_REQTYPE,
+                FTDI_SIO_REQUEST_SET_LINE_CONFIG,
+                ftdi_line_config_value,
+                port_data->control_idx,
+                NULL,
+                0,
+                DEFAULT_CONTROL_TIMEOUT_MILLIS);
+    if (0 != ret) return ret;
 }
 
 static int ftdi_start_reader(struct usbserial_port* port)
@@ -487,7 +557,7 @@ void ftdi_driver_init(struct usbserial_driver* driver)
     driver->get_ports_count = ftdi_get_ports_count;
     driver->port_init = ftdi_port_init;
     driver->port_deinit = ftdi_port_deinit;
-    driver->port_set_baud_rate = ftdi_port_set_baudrate;
+    driver->port_set_line_config = ftdi_port_set_line_config;
     driver->start_reader = ftdi_start_reader;
     driver->stop_reader = ftdi_stop_reader;
     driver->write = ftdi_write;

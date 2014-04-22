@@ -30,6 +30,38 @@ typedef void (*usbserial_error_cb_fn)(
         enum libusb_transfer_status status,
         void* user_data);
 
+enum usbserial_data_bits
+{
+    USBSERIAL_DATABITS_5 = 5,
+    USBSERIAL_DATABITS_6 = 6,
+    USBSERIAL_DATABITS_7 = 7,
+    USBSERIAL_DATABITS_8 = 8
+};
+
+enum usbserial_stop_bits
+{
+    USBSERIAL_STOPBITS_1,
+    USBSERIAL_STOPBITS_1_5,
+    USBSERIAL_STOPBITS_2
+};
+
+enum usbserial_parity
+{
+    USBSERIAL_PARITY_NONE,
+    USBSERIAL_PARITY_ODD,
+    USBSERIAL_PARITY_EVEN,
+    USBSERIAL_PARITY_MARK,
+    USBSERIAL_PARITY_SPACE
+};
+
+struct usbserial_line_config
+{
+    unsigned int baud;
+    enum usbserial_data_bits data_bits;
+    enum usbserial_stop_bits stop_bits;
+    enum usbserial_parity parity;
+};
+
 /* Initialize / deinitialize this library.
  * Results are undefined, if usbserial functions are called
  * before usbserial_init() is called and after usbserial_deinit()
@@ -81,7 +113,6 @@ int usbserial_port_init(
         struct usbserial_port** out_port,
         libusb_device_handle* usb_device_handle,
         unsigned int port_idx,
-        unsigned int baud,
         usbserial_read_cb_fn read_cb,
         usbserial_error_cb_fn read_error_cb,
         void* cb_user_data);
@@ -92,11 +123,12 @@ int usbserial_port_init(
  * not called. */
 int usbserial_port_deinit(struct usbserial_port* port);
 
-/* Set the baud rate for a serial port instance.
+/* Set the line configuration (including baud rate) for a
+ * serial port instance.
  * Returns zero on success, and an error code on failure. */
-int usbserial_port_set_baud_rate(
+int usbserial_port_set_line_config(
         struct usbserial_port* port,
-        unsigned int baud);
+        const struct usbserial_line_config* line_config);
 
 /* Start reading from the port.
  * Returns zero on success, and an error code on failure. */
