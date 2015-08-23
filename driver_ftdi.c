@@ -422,7 +422,7 @@ static int ftdi_port_set_line_config(
                 NULL,
                 0,
                 DEFAULT_CONTROL_TIMEOUT_MILLIS);
-    if (0 != ret) return ret;
+    return ret;
 }
 
 static int ftdi_start_reader(struct usbserial_port* port)
