@@ -35,7 +35,7 @@ static void usbserial_common_default_read_transfer_callback(struct libusb_transf
     assert(transfer);
 
     struct usbserial_port* port = (struct usbserial_port*) transfer->user_data;
-#ifndef WIN32
+#ifndef _WIN32
     int pthread_ret;
 #   ifdef NDEBUG
         USBSERIAL_UNUSED_VAR(pthread_ret);
@@ -43,7 +43,7 @@ static void usbserial_common_default_read_transfer_callback(struct libusb_transf
 #endif
     assert(port);
 
-#ifdef WIN32
+#ifdef _WIN32
     EnterCriticalSection(&port->mutex);
 #else
     pthread_ret = pthread_mutex_lock(&port->mutex);
@@ -74,7 +74,7 @@ static void usbserial_common_default_read_transfer_callback(struct libusb_transf
     }
     else if (LIBUSB_TRANSFER_CANCELLED == transfer->status)
     {
-#ifdef WIN32
+#ifdef _WIN32
         BOOL set_event_ret = SetEvent(port->cancel_event);
         assert(set_event_ret);
 #else
@@ -85,14 +85,14 @@ static void usbserial_common_default_read_transfer_callback(struct libusb_transf
     else
     {
         port->read_error_flag = 1;
-#ifdef WIN32
+#ifdef _WIN32
         BOOL set_event_ret = SetEvent(port->cancel_event);
         assert(set_event_ret);
 #endif
         if (port->read_error_cb) port->read_error_cb(transfer->status, port->cb_user_data);
     }
 
-#ifdef WIN32
+#ifdef _WIN32
     LeaveCriticalSection(&port->mutex);
 #else
     pthread_ret = pthread_mutex_unlock(&port->mutex);
@@ -126,7 +126,7 @@ int usbserial_common_cancel_read_transfer_sync(
     assert(port);
     assert(transfer);
 
-#ifndef WIN32
+#ifndef _WIN32
     int pthread_ret;
 #   ifdef NDEBUG
         USBSERIAL_UNUSED_VAR(pthread_ret);
@@ -137,7 +137,7 @@ int usbserial_common_cancel_read_transfer_sync(
 
     do
     {
-#ifdef WIN32
+#ifdef _WIN32
         EnterCriticalSection(&port->mutex);
 #else
         pthread_ret = pthread_mutex_lock(&port->mutex);
@@ -153,7 +153,7 @@ int usbserial_common_cancel_read_transfer_sync(
             cancel_ret = libusb_cancel_transfer(transfer);
             if (0 == cancel_ret)
             {
-#ifdef WIN32
+#ifdef _WIN32
                 DWORD wait_ret = WaitForSingleObject(port->cancel_event, INFINITE);
                 assert(WAIT_OBJECT_0 == wait_ret);
 #else
@@ -163,7 +163,7 @@ int usbserial_common_cancel_read_transfer_sync(
             }
         }
 
-#ifdef WIN32
+#ifdef _WIN32
         LeaveCriticalSection(&port->mutex);
 #else
         pthread_ret = pthread_mutex_unlock(&port->mutex);

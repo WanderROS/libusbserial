@@ -134,7 +134,7 @@ int usbserial_port_init(
     libusb_device* usb_device;
     struct libusb_device_descriptor usb_device_descriptor;
     int pthread_ret;
-#ifndef WIN32
+#ifndef _WIN32
     int mutex_initialized = 0, cancel_cond_initialized = 0;
 #endif
 
@@ -165,7 +165,7 @@ int usbserial_port_init(
         goto fail;
     }
 
-#ifdef WIN32
+#ifdef _WIN32
     InitializeCriticalSection(&port->mutex);
     EnterCriticalSection(&port->mutex);
 
@@ -206,7 +206,7 @@ int usbserial_port_init(
     port->driver_specific_data = NULL;
     port->read_error_flag = 0;
 
-#ifdef WIN32
+#ifdef _WIN32
     LeaveCriticalSection(&port->mutex);
 #else
     pthread_ret = pthread_mutex_unlock(&port->mutex);
@@ -229,7 +229,7 @@ fail:
 
     if (port)
     {
-#ifdef WIN32
+#ifdef _WIN32
         if (port->cancel_event)
         {
             CloseHandle(port->cancel_event);
@@ -277,7 +277,7 @@ int usbserial_start_reader(struct usbserial_port* port)
     if (!port) return USBSERIAL_ERROR_INVALID_PARAMETER;
     if (!port->read_cb) return USBSERIAL_ERROR_ILLEGAL_STATE;
 
-#ifdef WIN32
+#ifdef _WIN32
     BOOL set_event_ret = ResetEvent(port->cancel_event);
     assert(set_event_ret);
 #endif

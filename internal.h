@@ -25,7 +25,7 @@ along with libusbserial. If not, see <http://www.gnu.org/licenses/>.
 
 #define USBSERIAL_UNUSED_VAR(x) ((void)x)
 
-#ifdef WIN32
+#ifdef _WIN32
 #   define WIN32_LEAN_AND_MEAN
 #   include <windows.>
 #else
@@ -45,7 +45,7 @@ struct usbserial_port
     unsigned char read_buffer[READ_BUFFER_SIZE];
     void* driver_specific_data;
     int read_error_flag;
-#ifdef WIN32
+#ifdef _WIN32
     CRITICAL_SECTION mutex;
     HANDLE cancel_event;
 #else
