@@ -21,6 +21,12 @@ along with libusbserial. If not, see <http://www.gnu.org/licenses/>.
 
 #include "internal.h"
 
+#ifdef __APPLE__
+#include <libkern/OSByteOrder.h>
+#else
+#include <endian.h>
+#endif
+
 void usbserial_common_init_bulk_read_transfer(
         struct libusb_transfer* transfer,
         unsigned char endpoint,
@@ -36,6 +42,10 @@ int usbserial_common_bulk_write(
         const void* data,
         unsigned int bytes_count);
 
-uint32_t usbserial_common_convert_to_le(uint32_t native_value);
+#ifdef __APPLE__
+#define usbserial_common_convert_to_le(x) OSSwapHostToLittleInt32(x)
+#else
+#define usbserial_common_convert_to_le(x) htole32(x)
+#endif
 
 #endif // LIBUSBSERIAL_COMMON_H

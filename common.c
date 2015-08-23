@@ -207,22 +207,3 @@ int usbserial_common_bulk_write(
     }
     else return bulk_transfer_ret;
 }
-
-uint32_t usbserial_common_convert_to_le(uint32_t native_value)
-{
-#if IS_BIG_ENDIAN
-    union uint32_bytes be;
-    union uint32_bytes le;
-
-    be.uint32_value = native_value;
-
-    le.byte_values[0] = be.byte_values[3];
-    le.byte_values[1] = be.byte_values[2];
-    le.byte_values[2] = be.byte_values[1];
-    le.byte_values[3] = be.byte_values[0];
-
-    return le.uint32_value;
-#else
-    return native_value;
-#endif
-}
