@@ -386,16 +386,16 @@ static int ftdi_port_set_line_config(
         ftdi_line_config_value |= FTDI_PARITY_NONE_LINE_CONFIG_VALUE;
         break;
     case USBSERIAL_PARITY_ODD:
-        ftdi_line_config_value |= FTDI_PARITY_NONE_LINE_CONFIG_VALUE;
+        ftdi_line_config_value |= FTDI_PARITY_ODD_LINE_CONFIG_VALUE;
         break;
     case USBSERIAL_PARITY_EVEN:
-        ftdi_line_config_value |= FTDI_PARITY_NONE_LINE_CONFIG_VALUE;
+        ftdi_line_config_value |= FTDI_PARITY_EVEN_LINE_CONFIG_VALUE;
         break;
     case USBSERIAL_PARITY_MARK:
-        ftdi_line_config_value |= FTDI_PARITY_NONE_LINE_CONFIG_VALUE;
+        ftdi_line_config_value |= FTDI_PARITY_MARK_LINE_CONFIG_VALUE;
         break;
     case USBSERIAL_PARITY_SPACE:
-        ftdi_line_config_value |= FTDI_PARITY_NONE_LINE_CONFIG_VALUE;
+        ftdi_line_config_value |= FTDI_PARITY_SPACE_LINE_CONFIG_VALUE;
         break;
 
     default:
